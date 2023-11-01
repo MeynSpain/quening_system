@@ -1,3 +1,4 @@
+import 'package:flame/collisions.dart';
 import 'package:flame/components.dart';
 import 'package:flame/sprite.dart';
 import 'package:quening_system/components/task_component.dart';
@@ -5,7 +6,7 @@ import 'package:quening_system/const/global.dart';
 import 'package:quening_system/game/quening_system_game.dart';
 
 class ServiceComponent extends SpriteComponent
-    with HasGameRef<QueningSystemGame> {
+    with HasGameRef<QueningSystemGame>, CollisionCallbacks {
   bool isBusy = false;
   TaskComponent? taskComponent;
 
@@ -20,7 +21,8 @@ class ServiceComponent extends SpriteComponent
     sprite = spriteSheet.getSpriteById(0);
     size = Vector2(150, 120);
     anchor = Anchor.center;
-
+    
+    add(RectangleHitbox());
   }
 
   void addTask({required TaskComponent taskComponent}) {
@@ -34,13 +36,14 @@ class ServiceComponent extends SpriteComponent
         taskComponent!.updateExecutionTime(dt);
       } else {
         isBusy = false;
-        taskComponent?.removeFromParent();
+        taskComponent?.goToExit(gameRef.exitComponent);
+        // taskComponent?.goToExit(gameRef.exitComponent);
         // taskComponent?.leave();
         // taskComponent = null;
       }
     }
 
-    print(
-        'Service ${this}:\nisBusy: $isBusy\nTask:${taskComponent?.executionTime}');
+    // print(
+    //     'Service ${this}:\nisBusy: $isBusy\nTask:${taskComponent?.executionTime}');
   }
 }

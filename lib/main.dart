@@ -51,6 +51,7 @@ class MyGame extends FlameGame with TapCallbacks {
     slime.anchor = Anchor.center;
     add(slime);
 
+
     final spriteSheet = SpriteSheet(
         image: slimeImage, srcSize: Vector2.all(32));
 

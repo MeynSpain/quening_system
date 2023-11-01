@@ -13,9 +13,11 @@ class Global {
 
   static String shopRegisterJsonSpriteSheet = 'shop_register/shop_register_sprite_sheet.json';
 
+  static String shopFloorSprite = 'background/shop_floor_sprite.png';
+
   static int maxSizeQueue = 10;
 
-  static int maxSecondsExecutionTask = 8;
+  static int maxSecondsExecutionTask = 20;
 
-  static int maxSecondsDelayBetweenTasks = 3;
+  static int maxSecondsDelayBetweenTasks = 6;
 }

@@ -1,22 +1,32 @@
+import 'package:flame/collisions.dart';
 import 'package:flame/components.dart';
+import 'package:flame/extensions.dart';
 import 'package:flame/game.dart';
+import 'package:flame/layers.dart';
 import 'package:flame/palette.dart';
 import 'package:flame/sprite.dart';
+import 'package:quening_system/components/background_component.dart';
+import 'package:quening_system/components/exit_component.dart';
 import 'package:quening_system/components/service_component.dart';
 import 'package:quening_system/components/task_component.dart';
 import 'package:quening_system/const/global.dart';
 import 'package:quening_system/const/task_status.dart';
+import 'package:quening_system/layers/background_image_layer.dart';
 import 'package:quening_system/services/generator.dart';
 import 'package:quening_system/services/task_component_generator.dart';
 
-class QueningSystemGame extends FlameGame {
+class QueningSystemGame extends FlameGame with HasCollisionDetection {
   List<TaskComponent> queueTasks = [];
   double taskDelay = 0;
 
   List<ServiceComponent> servicesList = [];
 
+  // Map<ServiceComponent, bool> servicesMap = {};
+
   ServiceComponent serviceComponent1 = ServiceComponent();
   ServiceComponent serviceComponent2 = ServiceComponent();
+
+  ExitComponent exitComponent = ExitComponent();
 
   late TextComponent textQueueSizeComponent;
   late final SpriteSheet characterSpriteSheet;
@@ -26,14 +36,26 @@ class QueningSystemGame extends FlameGame {
 
   final Vector2 queuePosition = Vector2(30, 30);
 
-  // final
+  late final BackGroundImageLayer backGroundImageLayer;
 
   @override
   Future<void> onLoad() async {
     super.onLoad();
 
-    exitPosition = Vector2(100, size.y - 10);
+    add(BackGroundComponent(
+        sprite: await loadSprite(Global.shopFloorSprite), size: size));
+
+    // backGroundImageLayer = BackGroundImageLayer(
+    //   sprite: await loadSprite(Global.shopFloorSprite),
+    //   size: size,
+    // );
+
+    exitPosition = Vector2(size.x - 100, size.y - 10);
     startPosition = Vector2(100, size.y - 10);
+
+    exitComponent.position = exitPosition;
+
+    add(exitComponent);
 
     await images.load(Global.shopRegisterSpriteSheet);
 
@@ -43,11 +65,9 @@ class QueningSystemGame extends FlameGame {
 
     serviceComponent1.position.x = size.x - 50;
     serviceComponent1.position.y = 100;
-    // serviceComponent1.anchor = Anchor.topRight;
 
     serviceComponent2.position.x = size.x - 50;
     serviceComponent2.position.y = 300;
-    // serviceComponent2.anchor = Anchor.topRight;
 
     add(serviceComponent1);
     add(serviceComponent2);
@@ -61,6 +81,13 @@ class QueningSystemGame extends FlameGame {
     add(textQueueSizeComponent);
   }
 
+  @override
+  void render(Canvas canvas) {
+    super.render(canvas);
+
+    // backGroundImageLayer.render(canvas);
+  }
+
   /// Возвращает индекс свободного сервиса.
   /// Если такого нет, то возвращает -1
   int indexOfFreeService() {
@@ -72,8 +99,6 @@ class QueningSystemGame extends FlameGame {
 
     return -1;
   }
-
-  // List<TaskComponent> tasks = [];
 
   /// Создание заявки
   TaskComponent createTask() {
@@ -94,48 +119,61 @@ class QueningSystemGame extends FlameGame {
         .toDouble();
   }
 
-  /// Попытка добаить сгенерировать задачу и добавить ее в очередь
+  /// Попытка добавить задачу в очередь
   void tryAddTaskInQueue(TaskComponent taskComponent) {
     if (queueTasks.length < Global.maxSizeQueue) {
-      // add(taskComponent);
-      // tasks.add(taskComponent);
-
+      Vector2 newQueuePosition = Vector2.copy(queuePosition);
       if (queueTasks.isNotEmpty) {
-        taskComponent.position = queueTasks.last.position;
-        taskComponent.position.y += 50;
-      } else {
-        taskComponent.position = queuePosition;
+        newQueuePosition.y += (queueTasks.length * 50);
       }
 
-      queueTasks.add(taskComponent);
-      // add(taskComponent);
+      goInQueue(taskComponent, newQueuePosition);
 
-      // print('Сгенерировано время выполнения ${queueTasks.last.executionTime}');
+      queueTasks.add(taskComponent);
     } else {
       print('#### Задача отброшена ####');
     }
   }
 
+  void goInQueue(TaskComponent taskComponent, Vector2 newQueuePosition) {
+    taskComponent.goInQueue(newQueuePosition);
+  }
+
   /// Попытка добавить задачу в сервис для ее выполнения
-  void tryAddTaskInService(TaskComponent taskComponent) {
+  bool tryAddTaskInService(TaskComponent taskComponent) {
     int indexFreeService = indexOfFreeService();
     if (indexFreeService != -1) {
-      // TaskComponent task = queueTasks.removeAt(0);
-
       goToService(taskComponent, servicesList[indexFreeService]);
 
       servicesList[indexFreeService].addTask(taskComponent: taskComponent);
 
-      // updateQueue();
+      return true;
     } else {
-      // Если все сервисы заняты, то пробуем добавить задачу в очередь
-      tryAddTaskInQueue(taskComponent);
+      return false;
+    }
+  }
+
+  void tryAddTaskInServiceFromQueue() {
+    if (queueTasks.isNotEmpty) {
+      TaskComponent taskComponent = queueTasks.first;
+      bool isAdded = tryAddTaskInService(taskComponent);
+
+      if (isAdded) {
+        queueTasks.removeAt(0);
+        updateQueue();
+      }
     }
   }
 
   void updateQueue() {
-    for (var task in queueTasks) {
-      task.position.y -= 50;
+    for (int i = 0; i < queueTasks.length; i++) {
+      // if (queueTasks[i].status == TaskStatus.goInQueue) {
+      Vector2 newQueuePosition = Vector2.copy(queuePosition);
+      newQueuePosition.y += i * 50;
+      queueTasks[i].goInQueue(newQueuePosition);
+      // } else if (queueTasks[i].status == TaskStatus.inQueue) {
+
+      // }
     }
   }
 
@@ -157,33 +195,9 @@ class QueningSystemGame extends FlameGame {
     taskDelay -= dt;
   }
 
-  // List<RectangleComponent> list = [];
-
-  /*
-  void addRectangle() {
-    if (list.length < 20) {
-      RectangleComponent rectangleComponent = RectangleComponent();
-      rectangleComponent.size = Vector2.all(50);
-      rectangleComponent.paint = BasicPalette.red.paint();
-
-      if (list.isNotEmpty) {
-        rectangleComponent.position = list.last.position;
-        rectangleComponent.position.y += 50;
-
-      } else {
-        rectangleComponent.position = Vector2(100, 50);
-      }
-      list.add(rectangleComponent);
-      add(rectangleComponent);
-    }
-  }
-   */
-
   @override
   void update(double dt) {
     super.update(dt);
-
-    // addRectangle();
 
     /// Сначала сделать заявка попала в систему
     /// Если очередь пустая и обслуживание то на обслуживание
@@ -192,22 +206,28 @@ class QueningSystemGame extends FlameGame {
     TaskComponent? taskComponent;
     if (taskDelay <= 0) {
       taskComponent = createTask();
+      newTaskDelay();
     }
 
     if (taskComponent != null) {
       // Смотрим есть ли свободный сервис, если да, то добавляем в него задачу
-      tryAddTaskInService(taskComponent);
+      bool isAdded = tryAddTaskInService(taskComponent);
 
-      // Добавляем задачу в очередь, если кончилось время задержки
-      // tryAddTaskInQueue(taskComponent);
+      // Если добавить не получилось, то пробуем добавить в очередь
+      if (!isAdded) {
+        tryAddTaskInQueue(taskComponent);
+      }
     }
+
+    tryAddTaskInServiceFromQueue();
+
     // Обновляем выполняемые задачи
     updateServices(dt);
 
     // Обновляем задержку
     updateDelay(dt);
 
-    print('Размер очереди: ${queueTasks.length}');
+    // print('Размер очереди: ${queueTasks.length}');
     textQueueSizeComponent.text = queueTasks.length.toString();
   }
 }
