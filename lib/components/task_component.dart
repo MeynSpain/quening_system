@@ -29,7 +29,7 @@ class TaskComponent extends SpriteComponent
   Future<void> onLoad() async {
     super.onLoad();
 
-    if (gameRef.queueTasks.length < Global.maxSizeQueue) {
+    if (gameRef.queueTasks1.length < Global.maxSizeQueue) {
       status = TaskStatus.created;
     } else {
       goToExit(gameRef.exitComponent);
